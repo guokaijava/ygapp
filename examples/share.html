@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+    <title></title>
+    <script src="../js/mui.min.js"></script>
+    <link href="../css/mui.min.css" rel="stylesheet"/>
+    <style type="text/css">
+#sharecontent{
+	width:100%;
+	-webkit-user-select:text;
+	/*border: 1px solid #6C6C6C;*/
+	-webkit-border-radius: 2px;
+	border-radius: 2px;
+	font-size: 15px;
+}
+#pic{
+	width:100px;
+	height:100px;
+	/*border: 1px dashed #CCCCCC;*/
+}
+.sharehref{
+	width:80%;
+	-webkit-user-select:text;
+	border: 1px solid #6C6C6C;
+	-webkit-border-radius: 2px;
+	border-radius: 2px;
+	margin-bottom: .5em;
+	font-size: 15px;
+}
+		</style>
+</head>
+<body>
+	<header class="mui-bar mui-bar-nav">
+		<a class="mui-action-back mui-icon mui-icon-left-nav mui-pull-left"></a>
+		<h1 class="mui-title">分享演示</h1>
+	</header>
+	<div class="mui-content" style="margin:10px 20px;">
+			<p class="heading">分享内容：</p>
+			<textarea id="sharecontent" rows="3">我正在使用HBuilder+HTML5开发移动应用，赶紧跟我一起来体验！</textarea>
+			<p class="heading">分享图片：</p>
+			<table style="width:100%;">
+				<tbody>
+					<tr>
+						<td style="width:30%"><div class="mui-btn mui-btn-primary" onclick="shareCameraPicture()">拍照</div></td>
+						<td style="width:30%"><div class="mui-btn mui-btn-primary" onclick="shareGalleryPicture()">相册选取</div></td>
+						<td style="width:30%"><div class="mui-btn mui-btn-primary" onclick="shareLogoPicture()">使用logo图</div></td>
+					</tr>
+				</tbody>
+			</table>
+			<div style="width:100px;height: 100px;margin: 20px auto 0;">
+			   <img id="pic" src="../img/add.png"/>
+			</div>
+			<br/>
+			<div class="mui-btn mui-btn-block mui-btn-green" onclick="shareShow()">分享</div>
+			<div class="mui-btn mui-btn-block mui-btn-green" onclick="shareSystem()">系统分享</div>
+			<div style="padding: 0.5em 1em;"><hr color="#EEE"/></div>
+			<p class="heading">链接地址：</p>
+			<input id="sharehref" class="sharehref" type="url" value="http://www.dcloud.io/" placeholder="请输入要分享的链接地址"/>
+			<p class="heading">链接标题：</p>
+			<input id="sharehrefTitle" class="sharehref" type="text" value="DCloud HBuilder-做最好的HTML5开发工具" placeholder="请输入要分享的链接标题"/>
+			<p class="heading">链接描述：</p>
+			<input id="sharehrefDes" class="sharehref" type="text" value="我正在使用HBuilder+HTML5开发移动应用，赶紧跟我一起来体验！" placeholder="请输入要分享的链接描述"/>
+			<div class="mui-btn mui-btn-block mui-btn-green" onclick="shareHref()">分享链接</div>
+			<br/><br/>
+			<div style="padding: 0.5em 1em;"><hr color="#EEE"/></div>
+			<p class="des">如果需要解除分享中绑定的用户信息，请点击解除授权：</p>
+			<div class="mui-btn mui-btn-block mui-btn-green" onclick="cancelAuth()">解除授权</div>
+		
+	</div>
+	<script type="text/javascript" charset="utf-8">
+		var shares=null,bhref=false;
+		var Intent=null,File=null,Uri=null,main=null;
+      	mui.init();
+      	mui.plusReady(function(){
+      		updateSerivces();
+      		if(plus.os.name=="Android"){
+				Intent = plus.android.importClass("android.content.Intent");
+				File = plus.android.importClass("java.io.File");
+				Uri = plus.android.importClass("android.net.Uri");
+				main = plus.android.runtimeMainActivity();
+			}
+      	});
+      	function updateSerivces(){
+			plus.share.getServices( function(s){
+		       shares={};
+		       for(var i in s){
+			      var t=s[i];
+			      shares[t.id]=t;
+		       }
+	        }, function(e){
+		       alert( "获取分享服务列表失败："+e.message );
+	        } );
+        }
+      	// 使用Logo图片分享
+		function shareLogoPicture(){
+			var url="_www/logo.png";
+			plus.io.resolveLocalFileSystemURL(url,function(entry){
+				pic.src=entry.toLocalURL();
+				pic.realUrl=url;
+			},function(e){
+				alert("读取Logo文件错误："+e.message);
+			} );
+		}
+		// 拍照添加图片分享
+		function shareCameraPicture(){
+			var cmr=plus.camera.getCamera();
+			cmr.captureImage(function(p){
+				plus.io.resolveLocalFileSystemURL(p,function(entry){
+					pic.src=entry.toLocalURL();
+					pic.realUrl=p;
+				},function(e){
+					alert("读取拍照文件错误："+e.message);
+				} );
+			},function(e){
+				alert( "拍照失败："+e.message );
+			});
+		}
+		// 从相册添加图片分享
+		function shareGalleryPicture(){
+			plus.gallery.pick(function(p){
+				// 从相册返回的路径不需要转换可以直接使用
+				pic.src=p;
+				pic.realUrl=pic.src;
+				//      plus.io.resolveLocalFileSystemURL(p,function(entry){
+				//			pic.src=entry.toLocalURL();
+				//			pic.realUrl=pic.src;
+				//			outLine("选择图片："+pic.realUrl);
+				//		},function(e){
+				//			outLine("读取拍照文件错误："+e.message);
+				//		} );
+    			});
+		}
+		// 打开分享
+		function shareShow(){
+			bhref=false;
+			var ids=[{id:"weixin",ex:"WXSceneSession"},{id:"weixin",ex:"WXSceneTimeline"},{id:"sinaweibo"},{id:"tencentweibo"}],
+			bts=[{title:"发送给微信好友"},{title:"分享到微信朋友圈"},{title:"分享到新浪微博"},{title:"分享到腾讯微博"}];
+			if(plus.os.name=="iOS"){
+				ids.push({id:"qq"});
+				bts.push({title:"分享到QQ"});
+			}
+			plus.nativeUI.actionSheet({cancel:"取消",buttons:bts,title:"分享"},
+				function(e){
+					var i=e.index;
+					if(i>0){
+						shareAction(ids[i-1].id,ids[i-1].ex);
+					}
+				}
+			);
+		}
+		// 分析链接
+		function shareHref(){
+		  bhref=true;
+	      var ids=[{id:"weixin",ex:"WXSceneSession"},{id:"weixin",ex:"WXSceneTimeline"},{id:"qq"}],
+	      bts=[{title:"发送给微信好友"},{title:"分享到微信朋友圈"},{title:"分享到QQ"}];
+	      plus.nativeUI.actionSheet({cancel:"取消",buttons:bts,title:"分享"},
+		      function(e){
+			     var i=e.index;
+			     if(i>0){
+				    shareAction(ids[i-1].id,ids[i-1].ex);
+			     }
+		      }
+	      );
+        }
+		/**
+   		 * 分享操作
+         * @param {String} id
+        */
+		function shareAction(id,ex) {
+			var s=null;
+		    if(!id||!(s=shares[id])){
+				return;
+			}
+			if ( s.authenticated ) {
+				shareMessage(s,ex);
+			} else {
+				s.authorize( function(){
+					shareMessage(s,ex);
+				},function(e){
+					alert( "认证授权失败："+e.code+" - "+e.message );
+				});
+			}
+		}
+		/**
+   		 * 发送分享消息
+         * @param {plus.share.ShareService} s
+         */
+		function shareMessage(s,ex){
+			var msg={content:sharecontent.value,extra:{scene:ex}};
+			if(bhref){
+				msg.href=sharehref.value;
+				if(sharehrefTitle&&sharehrefTitle.value!=""){
+					msg.title=sharehrefTitle.value;
+				}
+				if(sharehrefDes&&sharehrefDes.value!=""){
+					msg.content=sharehrefDes.value;
+				}
+				msg.thumbs=["_www/logo.png"];
+				msg.pictures=["_www/logo.png"];
+			}else{
+				if(pic&&pic.realUrl){
+					msg.pictures=[pic.realUrl];
+				}
+			}
+			s.send( msg, function(){
+				alert( "分享到\""+s.description+"\"成功！ " );
+			}, function(e){
+		        alert( "分享到\""+s.description+"\"失败: "+e.code+" - "+e.message );
+	       } );
+        }
+		/**
+ 	     * 调用系统分享
+         * 调用
+         */
+		function shareSystem() {
+			if(plus.os.name!=="Android"){
+				plus.nativeUI.alert("此平台暂不支持系统分享功能!");
+				return;
+			}
+			var intent=new Intent(Intent.ACTION_SEND);
+			var p = "";
+			if(pic&&pic.realUrl){
+				p = pic.realUrl;
+				if(p.substr(0,7)==="file://"){
+					p=p.substr(7);
+				}else if(p.sub(0)!=="/"){
+					p=plus.io.convertLocalFileSystemURL(p);
+				}
+			}
+			var f = new File(p);
+			var uri = Uri.fromFile(f);
+			if(f.exists()&&f.isFile()){
+				console.log("image/*");
+				intent.setType("image/*");
+				intent.putExtra(Intent.EXTRA_STREAM,uri);
+			}else{
+				console.log("text/plain");
+				intent.setType("text/plain");
+			}
+			intent.putExtra(Intent.EXTRA_SUBJECT,"HBuilder");
+			intent.putExtra(Intent.EXTRA_TEXT,sharecontent.value);
+			intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			main.startActivity(Intent.createChooser(intent,"系统分享"));
+		}
+    </script>
+</body>
+</html>

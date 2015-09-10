@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Hello MUI</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1,user-scalable=no">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black">
+		<!--标准mui.css-->
+		<link rel="stylesheet" href="../css/mui.min.css">
+		<!--App自定义的css-->
+		<link rel="stylesheet" type="text/css" href="../css/app.css"/>
+		<style>
+			.flex-container {
+				display: -webkit-box;
+				display: -webkit-flex;
+				display: flex;
+				-webkit-flex-flow: row wrap;
+				justify-content: space-between;
+				text-align: center;
+			}
+			.mui-content-padded {
+				padding: 10px;
+			}
+			.mui-content-padded a {
+				margin: 3px;
+				width: 50px;
+				height: 50px;
+				display: inline-block;
+				text-align: center;
+				background-color: #fff;
+				border: 1px solid #ddd;
+				border-radius: 25px;
+				background-clip: padding-box;
+			}
+			.mui-content-padded a .mui-icon {
+				margin-top: 12px;
+			}
+			.mui-spinner,
+			.mui-spinner-white {
+				margin-top: 12px
+			}
+			.active .mui-spinner-indicator {
+				background: #007AFF;
+			}
+			.mui-content a {
+				color: #8F8F94;
+			}
+			.mui-content a.active {
+				color: #007aff;
+			}
+		</style>
+	</head>
+
+	<body>
+		<header class="mui-bar mui-bar-nav">
+			<a class="mui-action-back mui-icon mui-icon-left-nav mui-pull-left"></a>
+			<h1 class="mui-title">支付演示</h1>
+		</header>
+		<div class="mui-content"> 
+			<div class="mui-content-padded">
+				<div  class="mui-content-padded">YGAPP调用(服务端用YGAPPServer)</div>
+				<button type="button" onclick="ygpay('alipay')" class="mui-btn mui-btn-green mui-btn-block">支付宝</button>
+				<button type="button" onclick="ygpay('wxpay')" class="mui-btn mui-btn-green mui-btn-block">微信</button>
+			</div>
+		</div>
+		<script src="../js/mui.min.js"></script>
+		<script type="text/javascript" charset="utf-8">
+			mui.init({
+				swipeBack:true //启用右滑关闭功能
+			});
+			var pays={};
+			mui.plusReady(function(){
+			    // 获取支付通道
+			  plus.payment.getChannels(function(channels){
+				var content=document.getElementById('dcontent');
+				for(var i in channels){
+					var channel=channels[i];
+					pays[channel.id]=channel;
+				}
+			   },function(e){
+			   });
+			  
+				
+			});
+			var active = null,
+				lastid, span;
+			mui(".mui-content").on("tap", "a", function() {
+				var id = this.getAttribute("id");
+				if (!active) {
+					this.classList.add("active");
+					if (id) {
+						span = this.querySelector("span");
+						span.classList.remove("mui-" + id);
+						span.classList.add("mui-" + id + "-filled");
+					}
+					active = this;
+				} else {
+					active.classList.remove("active");
+					if (lastid) {
+						span.classList.remove("mui-" + lastid + "-filled");
+						span.classList.add("mui-" + lastid);
+					}
+
+					this.classList.add("active");
+					if (id) {
+						span = this.querySelector("span");
+						span.classList.remove("mui-" + id);
+						span.classList.add("mui-" + id + "-filled");
+					}
+
+					active = this;
+				}
+				lastid = id;
+			});
+			
+			function checkServices(pc){
+				  if(!pc.serviceReady){
+					var txt=null;
+					switch(pc.id){
+						case "alipay":
+							txt="检测到系统未安装“支付宝快捷支付服务”，无法完成支付操作，是否立即安装？";
+							break;
+						default:
+							txt="系统未安装“"+pc.description+"”服务，无法完成支付，是否立即安装？";
+							break;
+					}
+					plus.nativeUI.confirm(txt,function(e){
+						if(e.index==0){
+							pc.installService();
+						}
+					},pc.description);
+				  }
+                }
+				//
+				 var w=null;
+				 var PAYSERVER='http://demo.dcloud.net.cn/payment/?payid=';
+				 // 支付
+			     function pay(id){
+					if(w){return;}//检查是否请求订单中
+	var url=PAYSERVER;
+	if(id=='alipay'||id=='wxpay'){
+			url+=id;
+	}else{
+		plus.nativeUI.alert("不支持此支付通道！",null,"捐赠");
+		return;
+	}
+	url+='&appid='+plus.runtime.appid+'&total=';
+	
+	w=plus.nativeUI.showWaiting();
+	// 请求支付订单
+	var amount = "0.01";
+	var xhr=new XMLHttpRequest();
+	xhr.onreadystatechange=function(){
+		switch(xhr.readyState){
+			case 4:
+			w.close();w=null;
+			if(xhr.status==200){
+				console.log(xhr.responseText);
+				var order=xhr.responseText;
+				plus.payment.request(pays[id],order,function(result){
+					plus.nativeUI.alert("支付成功：感谢你的支持，我们会继续努力完善产品。",function(){
+						back();
+					},"捐赠");
+				},function(e){
+					alert("["+e.code+"]："+e.message);
+					plus.nativeUI.alert("更多错误信息请参考支付(Payment)规范文档：http://www.html5plus.org/#specification#/specification/Payment.html",null,"支付失败："+e.code);
+				});
+			}else{
+				plus.nativeUI.alert("获取订单信息失败！",null,"捐赠");
+			}
+			break;
+			default:
+			break;
+		}
+	}
+	xhr.open('GET',url+amount);
+	xhr.send();
+}
+			     
+			     function ygpay(id){
+					if(w){return;}//检查是否请求订单中
+	//var url="http://192.168.0.101:8080/Pay/buildPay/"+id+"/2.koala";
+	
+	var url="http://123.57.65.251:9161/service/buildPay.do?skey=b8d1460e-5538-47dd-b8aa-3e589939355e&orderId=143&payType="+id;
+	//var url = PAYSERVER;
+	if(id=='alipay'||id=='wxpay'){
+			//url+=id;
+	}else{
+		plus.nativeUI.alert("不支持此支付通道！",null,"捐赠");
+		return;
+	}
+	w=plus.nativeUI.showWaiting();
+	
+	// 请求支付订单
+	var xhr=new XMLHttpRequest();
+	xhr.onreadystatechange=function(){
+		switch(xhr.readyState){
+			case 4:
+			w.close();w=null;
+			if(xhr.status==200){
+				var order=xhr.responseText;
+				order = JSON.parse(order).reqCode;
+				//order =  {retcode:0,retmsg:"ok",appid:"wx0411fa6a39d61297",noncestr:"51f929f0abc225e1603cfa1ed22c95e0",package:"Sign=WXPay",partnerid:"1230636401",prepayid:"2201000000150903be50fe74bb0ce1a5",timestamp:1441293821,sign:"fa4caab2f576ddcc94732b7d65dbbc71c9bf0921"};
+				//order = {sign: "EF2E43183FDEF0AE729BDDAB9F1E4364", timestamp: "1441296865", noncestr: "0f1436a95643b9b2290678e35a58d859", partnerid: "1255284101", prepayid: "wx2015090400042531e13bf1c00752288459",appid: "wx6633a5c45669f132",package: "Sign=WXPay"};
+				alert(JSON.stringify(order))
+				plus.payment.request(pays[id],order,function(result){
+					plus.nativeUI.alert("支付成功：感谢你的支持，我们会继续努力完善产品。",function(){
+						back();
+					},"捐赠");
+				},function(e){
+					alert("["+e.code+"]："+e.message);
+					plus.nativeUI.alert("更多错误信息请参考支付(Payment)规范文档：http://www.html5plus.org/#specification#/specification/Payment.html",null,"支付失败："+e.code);
+				});
+			}else{
+				plus.nativeUI.alert("获取订单信息失败！",null,"捐赠");
+			}
+			break;
+			default:
+			break;
+		}
+	}
+	xhr.open('GET',url);
+	xhr.send();
+}
+		</script>
+	</body>
+</html>
